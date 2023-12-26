@@ -1,12 +1,13 @@
 import json
 from django.http import HttpResponse
 
-from rest_framework.decorators import action
-from rest_framework import viewsets, status, renderers
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 
-from dag_storage.dag.models import Dags, Nodes, Edges, get_serialized_to_dict
-from dag_storage.dag.serializers import DagSerializer, NodesSerializer, NodesSerializerRet, EdgesSerializer, NodesSerializerUpdate
+from dag_storage.dag.models import Dags, Nodes, Edges, get_dag_serialized_to_dict, get_metadata_serialized_to_dict
+from dag_storage.dag.serializers import (
+    DagSerializer, NodesSerializer, NodesSerializerRet, EdgesSerializer, NodesSerializerUpdate
+)
 
 
 UUID = "uuid"
@@ -99,14 +100,28 @@ class EdgesViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
 
-class DagDownloadAsJSONViewSet(viewsets.ReadOnlyModelViewSet):
+def get_json_response(file_handle: str, filename: str) -> HttpResponse:
+    response = HttpResponse(file_handle, content_type="application/json")
+    response["Content-Length"] = len(response.content)
+    response["Content-Disposition"] = f"attachment; filename=\"{filename}.json\""
+    return response
+
+
+class DownloadDagJSONViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dags.objects.all()
     serializer_class = DagSerializer
 
     def retrieve(self, *args, **kwargs):
         instance = self.get_object()
-        file_handle = json.dumps(get_serialized_to_dict(instance.uuid))
-        response = HttpResponse(file_handle, content_type="application/json")
-        response["Content-Length"] = len(response.content)
-        response["Content-Disposition"] = f"attachment; filename=\"{instance.name}.json\""
-        return response
+        return get_json_response(json.dumps(get_dag_serialized_to_dict(instance.uuid)), f"{instance.name}_dag")
+
+
+class DownloadMetadataJSONViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Dags.objects.all()
+    serializer_class = DagSerializer
+
+    def retrieve(self, *args, **kwargs):
+        instance = self.get_object()
+        return get_json_response(
+            json.dumps(get_metadata_serialized_to_dict(instance.uuid)), f"{instance.name}_metadata"
+        )

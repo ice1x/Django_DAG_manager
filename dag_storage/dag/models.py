@@ -10,7 +10,7 @@ def hex_uuid():
     return uuid.uuid4().hex
 
 
-def get_serialized_to_dict(dag_uuid: str):
+def get_dag_serialized_to_dict(dag_uuid: str):
     nodes = Nodes.objects.filter(dag=dag_uuid)
     json_dag = {}
     for node in nodes:
@@ -21,6 +21,10 @@ def get_serialized_to_dict(dag_uuid: str):
         elif node.successors and node.uuid not in json_dag:
             json_dag[node.uuid] = node.successors
     return json_dag
+
+
+def get_metadata_serialized_to_dict(dag_uuid: str):
+    return {node.uuid: node.data for node in Nodes.objects.filter(dag=dag_uuid)}
 
 
 def is_valid_dag(dag_dict: dict[str, list]) -> bool:
@@ -69,7 +73,7 @@ class NodesManager(Manager):
                     edge = Edges.objects.create(node_from=instance, node_to=successor)
                     edge.save()
 
-            if not is_valid_dag(get_serialized_to_dict(dag_uuid.hex)):
+            if not is_valid_dag(get_dag_serialized_to_dict(dag_uuid.hex)):
                 raise ValidationError("Cycle detected, graph should be DAG.")
 
         return instance
@@ -136,5 +140,5 @@ class Edges(Model):
             raise ValidationError("Edge cannot have the same source and destination node.")
         if self.node_from.dag != self.node_to.dag:
             raise ValidationError("Edge cannot have different source and destination DAG.")
-        if not is_valid_dag(get_serialized_to_dict(self.node_from.dag)):
+        if not is_valid_dag(get_dag_serialized_to_dict(self.node_from.dag)):
             raise ValidationError("Cycle detected, graph should be DAG.")
