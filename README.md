@@ -1,2 +1,3 @@
-# Django / DRF DAG manager
+# DAG manager 
+# Django / DRF
 # DAG converter to different data pipeline managers format
